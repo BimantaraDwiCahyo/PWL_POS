@@ -8,6 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 class UserModel extends Model
 {
     use HasFactory;
-    protected $table = 'm_user'; //mendefenisikan nama tabel yang digunakan oleh model ini
-    protected $primarykey = 'user_id'; // mendefenisikan primary key dari tabel yang digunakan
+    protected $table = 'm_user';
+    protected $primarykey = 'user_id';
+    /**
+     *  The attributes that are ,ass assignable.
+     *
+     * @var array
+     */
+
+    protected $fillable = ['level_id', 'username', 'nama', 'password'];
 }
