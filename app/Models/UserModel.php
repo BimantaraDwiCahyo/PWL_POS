@@ -9,7 +9,7 @@ class UserModel extends Model
 {
     use HasFactory;
     protected $table = 'm_user';
-    protected $primarykey = 'user_id';
+    protected $primaryKey = 'user_id';
     /**
      *  The attributes that are ,ass assignable.
      *
