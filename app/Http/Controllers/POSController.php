@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\LevelModel;
+use App\Models\UserModel;
 use Illuminate\Http\Request;
 
 class POSController extends Controller
@@ -11,7 +13,8 @@ class POSController extends Controller
      */
     public function index()
     {
-        //
+        $useri = UserModel::with('level')->get();
+        return view('user.index', compact('useri'))->with('i');
     }
 
     /**
@@ -19,7 +22,8 @@ class POSController extends Controller
      */
     public function create()
     {
-        //
+        $levels = LevelModel::all();
+        return view('user.create', ['levels' => $levels]);
     }
 
     /**
@@ -27,7 +31,14 @@ class POSController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $request->validate([
+            'user_id' => 'max 20',
+            'username' => 'required',
+            'nama' => 'required',
+        ]);
+
+        UserModel::create($request->all());
+        return redirect()->route('user.index')->with('success', 'User Berhasil Ditambahkan');
     }
 
     /**
@@ -35,7 +46,8 @@ class POSController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $useri = UserModel::findOrFail($id);
+        return view('user.show', compact('useri'));
     }
 
     /**
@@ -43,7 +55,9 @@ class POSController extends Controller
      */
     public function edit(string $id)
     {
-        //
+        $levels = LevelModel::all();
+        $useri = UserModel::find($id);
+        return view('user.edit', compact('useri'), ['levels' => $levels]);
     }
 
     /**
@@ -51,7 +65,14 @@ class POSController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $request->validate([
+            'username' => 'required',
+            'nama' => 'required',
+            'password' => 'required',
+        ]);
+
+        UserModel::find($id)->update($request->all());
+        return redirect()->route('user.index')->with('success', 'Data Berhasil Diupdate');
     }
 
     /**
@@ -59,6 +80,9 @@ class POSController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        $useri = UserModel::findOrFail($id)->delete();
+        return \redirect()->route('user.index')
+            ->with('success', 'data Berhasil Dihapus');
     }
+
 }
