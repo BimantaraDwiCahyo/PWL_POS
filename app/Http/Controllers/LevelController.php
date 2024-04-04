@@ -2,23 +2,55 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Support\Facades\DB;
+use App\DataTables\LevelDataTable;
+use App\Models\LevelModel;
+use Illuminate\Http\Request;
 
 class LevelController extends Controller
 {
-    public function index()
+    public function index(LevelDataTable $dataTable)
     {
-        DB::insert('insert into m_level(level_kode, level_nama, created_at) values(?, ?, ?)', ['CUS', 'Pelanggan', now()]);
-        return 'insert data baru berhasil';
+        return $dataTable->render('level.index');
+    }
 
-        // $row = DB::update('update m_level set level_nama = ? where level_kode = ?', ['Customer', 'CUS']);
-        // return 'update data berhasil. jumlah data yang di update: ' . $row . 'baris';
+    public function create()
+    {
+        return view('level.create');
+    }
 
-        //  $row = DB::delete('delete from m_level where level_kode = ? ', ['CUS']);
-        // return 'Delete data berhasil. Jumlah data yang dihapus : ' . $row . 'baris';
+    public function store(Request $request)
+    {
+        LevelModel::create([
+            'level_kode' => $request->kodelevel,
+            'level_nama' => $request->namalevel,
+        ]);
 
-        // $data = DB::select('select * from m_level');
-        // return view('level', ['data' => $data]);
+        return redirect('/level');
+    }
 
+    public function edit($id)
+    {
+        $level = LevelModel::find($id);
+        return view('level.edit', compact('level'));
+    }
+
+    public function update($id, Request $request)
+    {
+        $level = LevelModel::find($id);
+        if (!$level) {
+            return redirect()->back()->with('error', 'Level tidak ditemukan.');
+        }
+
+        $level->level_kode = $request->kodelevel;
+        $level->level_nama = $request->namalevel;
+        $level->save();
+
+        return redirect('/level')->with('success', 'Level berhasil diperbarui.');
+    }
+
+    public function destroy($id)
+    {
+        LevelModel::destroy($id);
+        return redirect('/level');
     }
 }

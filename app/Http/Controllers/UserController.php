@@ -1,57 +1,62 @@
 <?php
+
 namespace App\Http\Controllers;
 
+use App\DataTables\UserDataTable;
+use App\Models\LevelModel;
 use App\Models\UserModel;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
-    public function index()
+    public function index(UserDataTable $dataTable)
     {
-        $user = UserModel::with('level')->get();
-        return view('user', ['data' => $user]);
-
+        return $dataTable->render('user.index');
     }
 
-    public function tambah()
+    public function create()
     {
-
-        return view('user_tambah');
+        $level = LevelModel::all();
+        return view('user.create', compact('level'));
     }
-    public function tambah_simpan(Request $request)
-    {
-        UserMode::create([
-            'username' => $request->username,
-            'nama' => $request->nama,
-            'password' => Hash::make('$request->password'),
-            'level_id' => $request->level_id,
 
+    public function store(Request $request)
+    {
+        UserModel::create([
+            'level_id' => $request->idlevel,
+            'username' => $request->usernameuser,
+            'nama' => $request->namauser,
+            'password' => $request->passworduser,
         ]);
 
-        return redirect('/user');
+        return redirect('/level');
     }
-    public function ubah($id)
+
+    public function edit($id)
+    {
+        $level = UserModel::find($id);
+        return view('user.edit', compact('user'));
+    }
+
+    public function update($id, Request $request)
     {
         $user = UserModel::find($id);
-        return view('user_ubah', ['data' => $user]);
+        if (!$user) {
+            return redirect()->back()->with('error', 'User tidak ditemukan.');
+        }
 
-    }
-    public function ubah_simpan($id, Request $request)
-    {
-        $user = UserModel::find($id);
-
-        $user->username = $request->username;
-        $user->nama = $request->nama;
-        $user->password = Hash::make($request->password);
-        $user->level_id = $request->level_id;
+        $user->level_id = $request->idlevel;
+        $user->username = $request->usernameuser;
+        $user->nama = $request->namauser;
+        $user->password = $request->passworduser;
         $user->save();
-        return redirect('/user');
+
+        return redirect('/user')->with('success', 'User berhasil diperbarui.');
     }
-    public function hapus($id)
+
+    public function destroy($id)
     {
-        $user = UserModel::find($id);
-        $user->delete();
+        LevelModel::destroy($id);
         return redirect('/user');
     }
 }

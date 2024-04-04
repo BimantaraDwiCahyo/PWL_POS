@@ -20,6 +20,10 @@ class KategoriController extends Controller
 
     public function store(Request $request)
     {
+        $validated = $request->validate([
+            'kategori_code' => 'bail|required',
+            'kategori_nama' => 'required',
+        ]);
         KategoriModel::create([
             'kategori_kode' => $request->kodeKategori,
             'kategori_nama' => $request->namaKategori,
