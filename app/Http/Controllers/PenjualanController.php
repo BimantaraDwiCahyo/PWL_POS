@@ -7,7 +7,6 @@ use App\Models\DetailPenjualanModel;
 use App\Models\PenjualanModel;
 use App\Models\UserModel;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Yajra\DataTables\Facades\DataTables;
 
 class PenjualanController extends Controller
@@ -45,10 +44,10 @@ class PenjualanController extends Controller
         return DataTables::of($penjualans)
             ->addIndexColumn()
             ->addColumn('aksi', function ($penjualans) {
-                $btn = '<a href="' . url('/penjualan/' . $penjualans->penjualan_id) . '" class="btn btn-info btn-sm">Detail</a> ';
-                $btn .= '<a href="' . url('/penjualan/' . $penjualans->penjualan_id . '/edit') . '" class="btn btn-warning btn-sm">Edit</a> ';
+                $btn = '<a href="' . url('/penjualan/' . $penjualans->penjualan_id) . '" class="btn btn-primary" style="width: 40px; height: 40px; margin-right: 5px;"><i class="fas fa-eye"></i></a>';
+                // $btn .= '<a href="' . url('/penjualan/' . $penjualans->penjualan_id . '/edit') . '" class="btn btn-warning btn-sm">Edit</a> ';
                 $btn .= '<form class="d-inline-block" method="POST" action="' . url('/penjualan/' . $penjualans->penjualan_id) . '">'
-                . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-danger btn-sm" onclick="return confirm(\'Apakah Anda yakin menghapus data ini?\');">Hapus</button></form>';
+                . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-danger" style="width: 40px; height: 40px;" onclick="return confirm(\'Apakah Anda Yakin Menghapus Data Ini ? \');"><i class="fas fa-trash-alt"></i></button></form>';
                 return $btn;
             })
             ->rawColumns(['aksi'])
@@ -98,7 +97,6 @@ class PenjualanController extends Controller
         $penjualan->user_id = $validatedData['user'];
         $penjualan->save();
 
-        // Loop melalui setiap barang yang dipilih
         foreach ($validatedData['barang'] as $item) {
             // Cek apakah barang dipilih tanpa jumlah tertentu
             if (!empty($item['id'])) {
@@ -108,7 +106,7 @@ class PenjualanController extends Controller
                 $detailPenjualan->barang_id = $item['id'];
                 // Periksa apakah jumlah barang telah diisi, jika tidak, maka dianggap 0
                 $detailPenjualan->jumlah = isset($item['jumlah']) ? $item['jumlah'] : 0;
-                $detailPenjualan->harga = $barang->harga_jual; // Perbaiki di sini
+                $detailPenjualan->harga = $barang->harga_jual;
                 $detailPenjualan->save();
             }
         }
@@ -138,61 +136,67 @@ class PenjualanController extends Controller
             'activeMenu' => $activeMenu,
         ]);
     }
-
     public function edit(string $id)
     {
-        $breadcrumb = (object) [
-            'title' => 'Edit Transaksi Penjualan ',
-            'list' => ['Home', 'Transaksi Penjualan ', 'Edit'],
-        ];
+        $penjualan = PenjualanModel::with(['detail', 'user'])->find($id);
 
-        $page = (object) [
-            'title' => 'Edit Transaksi Penjualan ',
-        ];
+        if (!$penjualan) {
+            return redirect('/penjualan')->with('error', 'Data Transaksi tidak ditemukan');
+        }
 
-        $penjualan = PenjualanModel::findOrFail($id);
         $users = UserModel::all();
         $barang = BarangModel::all();
-        $penjualanBarangIds = $penjualan->details ? $penjualan->details->pluck('barang_id')->toArray() : [];
-
         $activeMenu = 'penjualan';
 
-        return view('penjualan.edit', compact('breadcrumb', 'page', 'penjualan', 'users', 'barang', 'penjualanBarangIds', 'activeMenu'));
+        return view('penjualan.edit', [
+            'penjualan' => $penjualan,
+            'users' => $users,
+            'barang' => $barang,
+            'activeMenu' => $activeMenu,
+        ]);
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, string $id)
     {
         $validatedData = $request->validate([
+            'penjualan_kode' => 'required|string|max:255',
             'pembeli' => 'required|string|max:255',
             'tanggal' => 'required|date',
-            'waktu' => 'required',
             'user' => 'required|exists:m_user,user_id',
-            'barang.*' => 'nullable|exists:m_barang,barang_id',
-            'jumlah.*' => 'nullable|integer|min:0',
+            'barang' => 'required|array',
+            'barang.*.id' => 'exists:m_barang,barang_id',
+            'barang.*.jumlah' => 'nullable|integer|min:1',
         ]);
 
-        $penjualanTanggal = \Carbon\Carbon::parse($request->tanggal . ' ' . $request->waktu);
+        $penjualan = PenjualanModel::find($id);
 
-        $penjualan = PenjualanModel::findOrFail($id);
+        if (!$penjualan) {
+            return redirect('/penjualan')->with('error', 'Data Transaksi tidak ditemukan');
+        }
+
+        $penjualan->penjualan_kode = $validatedData['penjualan_kode'];
         $penjualan->pembeli = $validatedData['pembeli'];
-        $penjualan->penjualan_tanggal = $penjualanTanggal;
+        $penjualan->penjualan_tanggal = $validatedData['tanggal'];
         $penjualan->user_id = $validatedData['user'];
         $penjualan->save();
 
-        DB::transaction(function () use ($penjualan, $validatedData) {
-            $penjualan->details()->delete();
+        // Delete existing details
+        $penjualan->detail()->delete();
 
-            foreach ($validatedData['barang'] as $barangId => $value) {
-                if ($value > 0) {
-                    $penjualan->details()->create([
-                        'barang_id' => $barangId,
-                        'jumlah' => $validatedData['jumlah'][$barangId],
-                    ]);
-                }
+        // Save new details
+        foreach ($validatedData['barang'] as $item) {
+            if (!empty($item['id'])) {
+                $barang = BarangModel::find($item['id']);
+                $detailPenjualan = new DetailPenjualanModel();
+                $detailPenjualan->penjualan_id = $penjualan->penjualan_id;
+                $detailPenjualan->barang_id = $item['id'];
+                $detailPenjualan->jumlah = isset($item['jumlah']) ? $item['jumlah'] : 0;
+                $detailPenjualan->harga = $barang->harga_jual;
+                $detailPenjualan->save();
             }
-        });
+        }
 
-        return redirect('/penjualan')->with('success', 'Transaksi berhasil diperbarui.');
+        return redirect('/penjualan')->with('success', 'Data Transaksi berhasil diperbarui.');
     }
 
     public function destroy(string $id)
